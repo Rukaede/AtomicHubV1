@@ -43,7 +43,7 @@ local Section = Main:CreateSection("Auto Farm")
 local Misc = Window:CreateTab("Misc", nil) -- Title, Image
 local Section = Misc:CreateSection("Close GUI")
 
-local Button = Misc:CreateButton({
+Misc:CreateButton({
    Name = "Close GUI",
    Callback = function()
       Rayfield:Destroy()
