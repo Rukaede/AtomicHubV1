@@ -43,7 +43,10 @@ local DestroyButton = Misc:CreateButton({
    end,
 })
 
--- 🔹 Pill Recipes (PillName -> array of Herbs)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CraftPill = ReplicatedStorage:WaitForChild("Events"):WaitForChild("CraftPill")
+
+-- 🔹 Pill Recipes
 local PillRecipes = {
    ["Awakening Qi Pill"] = {"Ginseng", "Ginseng", "Spirit Grass", "Spirit Grass"},
    ["Perfect Qi Pill"]   = {"Moonlight Flower", "Moonlight Flower", "Azure Leaf", "Azure Leaf"}
@@ -62,7 +65,7 @@ local Pill = Main:CreateDropdown({
    Flag = "PillDrop",
    Callback = function(Option)
       selectedPill = Option
-      print("Selected Pill:", selectedPill)
+      print("✅ Selected Pill:", selectedPill)
    end,
 })
 
@@ -74,7 +77,7 @@ local Rarity = Main:CreateDropdown({
    Flag = "RarityDrop",
    Callback = function(Option)
       selectedRarity = Option
-      print("Selected Rarity:", selectedRarity)
+      print("✅ Selected Rarity:", selectedRarity)
    end,
 })
 
@@ -82,28 +85,35 @@ local Rarity = Main:CreateDropdown({
 local AutoCraft = Main:CreateButton({
    Name = "Craft Pill",
    Callback = function()
-      if not selectedPill or not selectedRarity then
-         warn("⚠ Please select both pill and rarity first!")
+      print("⚡ Craft button pressed")
+
+      if not selectedPill then
+         warn("❌ No pill selected")
+         return
+      end
+      if not selectedRarity then
+         warn("❌ No rarity selected")
          return
       end
 
-      -- Look up herb recipe for chosen pill
       local herbs = PillRecipes[selectedPill]
       if not herbs then
-         warn("⚠ No recipe found for pill:", selectedPill)
+         warn("❌ No recipe found for pill:", selectedPill)
          return
       end
 
-      -- Build args using herbs + rarity
+      -- Build args
       local args = {}
       for i, herb in ipairs(herbs) do
-         table.insert(args, "Herb_" .. herb .. "_" .. selectedRarity)
+         local ingredient = "Herb_" .. herb .. "_" .. selectedRarity
+         print("🔹 Ingredient", i, ":", ingredient)
+         table.insert(args, ingredient)
       end
-      table.insert(args, 1) -- last argument = how many of each ingredient
+      table.insert(args, 1)
 
-      print("🔨 Crafting:", selectedPill, "with ->", table.concat(args, ", "))
+      print("🚀 Sending to CraftPill:", unpack(args))
 
-      local CraftPill = game:GetService("ReplicatedStorage").Events.CraftPill
+      -- Fire server
       CraftPill:FireServer(unpack(args))
    end,
 })
