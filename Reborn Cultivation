@@ -47,3 +47,64 @@ local DestroyButton = Misc:CreateButton({
       Rayfield:Destroy()
    end,
 })
+
+-- 🔹 Pill Recipes table (PillName -> HerbName)
+local PillRecipes = {
+   ["Awakening Qi Pill"] = "Ginseng", "Ginseng", "Spirit Grass", "Spirit Grass"
+}
+
+-- Store selections
+local selectedRecipe = nil
+local selectedRarity = nil
+
+local Pill = Main:CreateDropdown({
+   Name = "Choose Pill",
+   Options = {"Awakening Qi Pill","Perfect Qi Pill"},
+   CurrentOption = {"None"},
+   MultipleOptions = false,
+   Flag = "PillDrop", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+   Callback = function(Options)
+		selectedOption = Option
+		print("Selected:", selectedOption)
+   end,
+})
+
+local Rarity = Main:CreateDropdown({
+   Name = "Choose Rarity",
+   Options = {"1", "10", "100", "1000", "10000", "100000"},
+   CurrentOption = "None",
+   Flag = "RarityDrop",
+   Callback = function(Option)
+      selectedRarity = Option
+      print("Selected Rarity:", selectedRarity)
+   end,
+})
+
+local AutoCraft = Main:CreateButton({
+   Name = "Craft Pill",
+   Callback = function()
+      if not selectedPill or not selectedRarity then
+         warn("⚠ Please select both pill and rarity first!")
+         return
+      end
+
+      -- Look up herb recipe for chosen pill
+      local herb = PillRecipes[selectedPill]
+
+      -- Build ingredient string: Herb_<HerbName>_<Rarity>
+      local ingredient = "Herb_" .. herb .. "_" .. selectedRarity
+
+      local args = {
+         ingredient,
+         ingredient,
+         ingredient,
+         ingredient,
+         1 -- how many of each ingredient
+      }
+
+      print("🔨 Crafting:", selectedPill, "with ->", ingredient)
+
+      local CraftPill = game:GetService("ReplicatedStorage").Events.CraftPill
+      CraftPill:FireServer(unpack(args))
+   end,
+})
