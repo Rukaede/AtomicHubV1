@@ -80,31 +80,11 @@ Main:CreateInput({
     end,
 })
 
--- Ingredients-per-craft (last number in args)
-Main:CreateInput({
-    Name = "Ingredients per craft (last arg)",
-    PlaceholderText = tostring(perIngredient),
-    RemoveTextAfterFocusLost = false,
-    Callback = function(text)
-        local n = tonumber(text)
-        if n and n >= 1 then perIngredient = n
-        else perIngredient = 1 end
-        print("[AutoCraft] perIngredient set ->", perIngredient)
-    end,
-})
-
--- Delay input
-Main:CreateInput({
-    Name = "Delay between fires (seconds)",
-    PlaceholderText = tostring(delayTime),
-    RemoveTextAfterFocusLost = false,
-    Callback = function(text)
-        local n = tonumber(text)
-        if n and n >= 0 then delayTime = n
-        else delayTime = 0.01 end
-        print("[AutoCraft] delayTime set ->", delayTime)
-    end,
-})
+local selectedPill = nil
+local selectedRarity = "100" -- Default rarity
+local craftAmount = 1
+local delayBetweenCrafts = 0.05 -- 🕒 Delay between fires (in seconds)
+local autoCrafting = false
 
 -- Helper: build args exactly like your working example
 local function buildArgs(herbs, rarity, per)
