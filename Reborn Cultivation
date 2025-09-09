@@ -39,8 +39,8 @@ local Window = Rayfield:CreateWindow({
 
 local Main = Window:CreateTab("Main", nil) -- Title, Image
 local Section = Main:CreateSection("Auto Farm")
-
-Tab:CreateButton({
+local Misc = Window:CreateTab("Misc", nil) -- Title, Image
+Misc:CreateButton({
    Name = "Close GUI",
    Callback = function()
       Rayfield:Destroy()
