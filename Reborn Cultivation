@@ -46,74 +46,69 @@ local DestroyButton = Misc:CreateButton({
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CraftPill = ReplicatedStorage:WaitForChild("Events"):WaitForChild("CraftPill")
 
--- 🔹 Pill Recipes
+-- Pill Recipes (exact herb names with spaces!)
 local PillRecipes = {
-   ["Awakening Qi Pill"] = {"Ginseng", "Ginseng", "Spirit Grass", "Spirit Grass"},
-   ["Perfect Qi Pill"]   = {"Moonlight Flower", "Moonlight Flower", "Azure Leaf", "Azure Leaf"}
+    ["Awakening Qi Pill"] = {"Moonlight Flower", "Moonlight Flower", "Moonlight Flower", "Moonlight Flower"},
+    ["Perfect Qi Pill"]   = {"Ginseng", "Ginseng", "Spirit Grass", "Spirit Grass"}
 }
 
--- Store selections
 local selectedPill = nil
 local selectedRarity = nil
 
 -- Dropdown for Pill
 local Pill = Main:CreateDropdown({
-   Name = "Choose Pill",
-   Options = {"Awakening Qi Pill","Perfect Qi Pill"},
-   CurrentOption = "None",
-   MultipleOptions = false,
-   Flag = "PillDrop",
-   Callback = function(Option)
-      selectedPill = Option
-      print("✅ Selected Pill:", selectedPill)
-   end,
+    Name = "Choose Pill",
+    Options = {"Awakening Qi Pill", "Perfect Qi Pill"},
+    CurrentOption = "None",
+    MultipleOptions = false,
+    Flag = "PillDrop",
+    Callback = function(Option)
+        selectedPill = Option
+        print("✅ Selected Pill:", selectedPill)
+    end,
 })
 
 -- Dropdown for Rarity
 local Rarity = Main:CreateDropdown({
-   Name = "Choose Rarity",
-   Options = {"1", "10", "100", "1000", "10000", "100000"},
-   CurrentOption = "None",
-   Flag = "RarityDrop",
-   Callback = function(Option)
-      selectedRarity = Option
-      print("✅ Selected Rarity:", selectedRarity)
-   end,
+    Name = "Choose Rarity",
+    Options = {"1", "10", "100", "1000", "10000", "100000"},
+    CurrentOption = "None",
+    Flag = "RarityDrop",
+    Callback = function(Option)
+        selectedRarity = Option
+        print("✅ Selected Rarity:", selectedRarity)
+    end,
 })
 
--- Button to Craft
+-- Button to Auto Craft
 local AutoCraft = Main:CreateButton({
-   Name = "Craft Pill",
-   Callback = function()
-      print("⚡ Craft button pressed")
+    Name = "Start Auto Craft (2500x)",
+    Callback = function()
+        if not selectedPill or not selectedRarity then
+            warn("⚠ Please select both pill and rarity first!")
+            return
+        end
 
-      if not selectedPill then
-         warn("❌ No pill selected")
-         return
-      end
-      if not selectedRarity then
-         warn("❌ No rarity selected")
-         return
-      end
+        local herbs = PillRecipes[selectedPill]
+        if not herbs then
+            warn("⚠ No recipe found for:", selectedPill)
+            return
+        end
 
-      local herbs = PillRecipes[selectedPill]
-      if not herbs then
-         warn("❌ No recipe found for pill:", selectedPill)
-         return
-      end
+        -- Build args with rarity
+        local args = {}
+        for _, herb in ipairs(herbs) do
+            local ingredient = "Herb_" .. herb .. "_" .. selectedRarity
+            table.insert(args, ingredient)
+        end
+        table.insert(args, 1) -- amount
 
-      -- Build args
-      local args = {}
-      for i, herb in ipairs(herbs) do
-         local ingredient = "Herb_" .. herb .. "_" .. selectedRarity
-         print("🔹 Ingredient", i, ":", ingredient)
-         table.insert(args, ingredient)
-      end
-      table.insert(args, 1)
+        print("🚀 Crafting:", selectedPill, "x2500 with", unpack(args))
 
-      print("🚀 Sending to CraftPill:", unpack(args))
-
-      -- Fire server
-      CraftPill:FireServer(unpack(args))
-   end,
+        -- Loop fire 2500x
+        for i = 1, 2500 do
+            CraftPill:FireServer(unpack(args))
+            task.wait(0.01)
+        end
+    end,
 })
