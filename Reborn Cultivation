@@ -1,117 +1,223 @@
+-- FULL Rayfield Auto-Craft (drop-in)
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "Atomic Hub       by: itzRealEzra",
-   Icon = 0,
    LoadingTitle = "Atomic Interface Suite",
    LoadingSubtitle = "by itzRealEzra",
    ShowText = "Rayfield",
    Theme = "Default",
    ToggleUIKeybind = "K",
-   DisableRayfieldPrompts = false,
-   DisableBuildWarnings = false,
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = nil,
-      FileName = "Big Hub"
-   },
-   Discord = {
-      Enabled = false,
-      Invite = "noinvitelink",
-      RememberJoins = true
-   },
-   KeySystem = false,
-   KeySettings = {
-      Title = "Untitled",
-      Subtitle = "Key System",
-      Note = "No method of obtaining the key is provided",
-      FileName = "Key",
-      SaveKey = true,
-      GrabKeyFromSite = false,
-      Key = {"Hello"}
-   }
+   ConfigurationSaving = { Enabled = true, FolderName = nil, FileName = "Big Hub" }
 })
 
 local Main = Window:CreateTab("Main", nil)
-local Section = Main:CreateSection("Auto Farm")
+Main:CreateSection("Auto Farm")
 
 local Misc = Window:CreateTab("Misc", nil)
-local DestroyButton = Misc:CreateButton({
+Misc:CreateButton({
    Name = "Close GUI",
-   Callback = function()
-      Rayfield:Destroy()
-   end,
+   Callback = function() Rayfield:Destroy() end,
 })
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local CraftPill = ReplicatedStorage:WaitForChild("Events"):WaitForChild("CraftPill")
-
--- ✅ Pill Recipes (with 4 herbs each)
+-- ========= CONFIG: fill recipes to match your screenshot/game =========
 local PillRecipes = {
     ["Awakening Qi Pill"] = {"Ginseng", "Ginseng", "Spirit Grass", "Spirit Grass"},
     ["Perfect Qi Pill"]   = {"Ginseng", "Spirit Grass", "Spirit Grass", "Lotus"},
     ["Moonlight Qi Pill"] = {"Moonlight Flower", "Moonlight Flower", "Moonlight Flower", "Moonlight Flower"},
-    ["Nine Rotations Pill"] = {"Blood Flower", "Blood Flower", "Blood Flower", "Blood Flower"} -- example
+    ["Nine Rotations Pill"] = {"Blood Flower", "Blood Flower", "Blood Flower", "Blood Flower"},
+    -- add more here if needed
 }
+-- =====================================================================
 
-local selectedPill = nil
-local selectedRarity = nil
+-- build sorted list of pill names for the dropdown
+local pillOptions = {}
+for k,_ in pairs(PillRecipes) do table.insert(pillOptions, k) end
+table.sort(pillOptions)
 
--- Dropdown for Pill
-local Pill = Main:CreateDropdown({
+-- runtime / ui state
+local selectedPill = pillOptions[1] or nil
+local selectedRarity = "100"
+local craftAmount = 2500      -- default number of times to fire
+local perIngredient = 1       -- last arg in your args list
+local delayTime = 0.01
+local autoCrafting = false
+
+-- Pill dropdown
+Main:CreateDropdown({
     Name = "Choose Pill",
-    Options = {"Awakening Qi Pill", "Perfect Qi Pill", "Moonlight Qi Pill", "Nine Rotations Pill"},
-    CurrentOption = "None",
-    MultipleOptions = false,
+    Options = pillOptions,
+    CurrentOption = selectedPill or "None",
     Flag = "PillDrop",
-    Callback = function(Option)
-        selectedPill = Option
-        print("✅ Selected Pill:", selectedPill)
+    Callback = function(option)
+        selectedPill = option
+        print("[AutoCraft] Selected pill ->", selectedPill)
     end,
 })
 
--- Dropdown for Rarity
-local Rarity = Main:CreateDropdown({
+-- Rarity dropdown
+Main:CreateDropdown({
     Name = "Choose Rarity",
-    Options = {"1", "10", "100", "1000", "10000", "100000"},
-    CurrentOption = "None",
+    Options = {"1","10","100","1000","10000","100000"},
+    CurrentOption = selectedRarity,
     Flag = "RarityDrop",
-    Callback = function(Option)
-        selectedRarity = Option
-        print("✅ Selected Rarity:", selectedRarity)
+    Callback = function(option)
+        selectedRarity = option
+        print("[AutoCraft] Selected rarity ->", selectedRarity)
     end,
 })
 
--- Button to Auto Craft
-local AutoCraft = Main:CreateButton({
-    Name = "Craft Pill (x2500)",
-    Callback = function()
-        if not selectedPill or not selectedRarity then
-            warn("⚠ Please select both pill and rarity first!")
-            return
+-- Amount input (how many times to loop; 0 = infinite)
+Main:CreateInput({
+    Name = "Amount to craft (0 = infinite)",
+    PlaceholderText = tostring(craftAmount),
+    RemoveTextAfterFocusLost = false,
+    Callback = function(text)
+        local n = tonumber(text)
+        if n and n >= 0 then craftAmount = n
+        else craftAmount = 2500 end
+        print("[AutoCraft] craftAmount set ->", craftAmount)
+    end,
+})
+
+-- Ingredients-per-craft (last number in args)
+Main:CreateInput({
+    Name = "Ingredients per craft (last arg)",
+    PlaceholderText = tostring(perIngredient),
+    RemoveTextAfterFocusLost = false,
+    Callback = function(text)
+        local n = tonumber(text)
+        if n and n >= 1 then perIngredient = n
+        else perIngredient = 1 end
+        print("[AutoCraft] perIngredient set ->", perIngredient)
+    end,
+})
+
+-- Delay input
+Main:CreateInput({
+    Name = "Delay between fires (seconds)",
+    PlaceholderText = tostring(delayTime),
+    RemoveTextAfterFocusLost = false,
+    Callback = function(text)
+        local n = tonumber(text)
+        if n and n >= 0 then delayTime = n
+        else delayTime = 0.01 end
+        print("[AutoCraft] delayTime set ->", delayTime)
+    end,
+})
+
+-- Helper: build args exactly like your working example
+local function buildArgs(herbs, rarity, per)
+    local args = {}
+    for i = 1, #herbs do
+        -- keep spaces in herb names (must match server exact string)
+        table.insert(args, "Herb_" .. herbs[i] .. "_" .. tostring(rarity))
+    end
+    table.insert(args, tonumber(per) or 1)
+    return args
+end
+
+-- Background auto-craft toggle (start/stop)
+Main:CreateToggle({
+    Name = "Auto Craft (toggle)",
+    CurrentValue = false,
+    Flag = "AutoCraftToggle",
+    Callback = function(val)
+        autoCrafting = val
+        print("[AutoCraft] Toggle ->", tostring(val))
+
+        if not autoCrafting then
+            return -- the loop checks autoCrafting and will stop
         end
+
+        -- spawn the loop so UI remains responsive
+        task.spawn(function()
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local Events = ReplicatedStorage:FindFirstChild("Events")
+            if not Events then
+                warn("[AutoCraft] ERROR: ReplicatedStorage.Events not found")
+                autoCrafting = false
+                return
+            end
+            local CraftPill = Events:FindFirstChild("CraftPill")
+            if not CraftPill then
+                warn("[AutoCraft] ERROR: CraftPill remote not found at ReplicatedStorage.Events.CraftPill")
+                autoCrafting = false
+                return
+            end
+
+            if not selectedPill or not PillRecipes[selectedPill] then
+                warn("[AutoCraft] ERROR: Selected pill invalid:", tostring(selectedPill))
+                autoCrafting = false
+                return
+            end
+            if not selectedRarity then
+                warn("[AutoCraft] ERROR: No rarity selected")
+                autoCrafting = false
+                return
+            end
+
+            local herbs = PillRecipes[selectedPill]
+            local args = buildArgs(herbs, selectedRarity, perIngredient)
+            print("[AutoCraft] Starting. Pill:", selectedPill, "Rarity:", selectedRarity, "Amount:", craftAmount, "PerIngredient:", perIngredient)
+
+            local fired = 0
+            while autoCrafting do
+                if craftAmount ~= 0 and fired >= craftAmount then break end
+
+                local ok, err = pcall(function()
+                    CraftPill:FireServer(unpack(args))
+                end)
+
+                if not ok then
+                    warn("[AutoCraft] FireServer failed:", err)
+                    autoCrafting = false
+                    break
+                end
+
+                fired = fired + 1
+                if fired % 100 == 0 then print("[AutoCraft] Fired:", fired) end
+
+                task.wait(delayTime)
+            end
+
+            print("[AutoCraft] Stopped. Total fired:", fired)
+            -- ensure UI toggle reflects stopped state (Rayfield will persist last value; we just make local state false)
+            autoCrafting = false
+        end)
+    end,
+})
+
+-- One-shot test button (sends loop exactly craftAmount times as a quick test)
+Main:CreateButton({
+    Name = "Start One-shot (runs selected amount)",
+    Callback = function()
+        print("[AutoCraft] One-shot pressed")
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Events = ReplicatedStorage:FindFirstChild("Events")
+        if not Events then warn("[AutoCraft] Events missing") return end
+        local CraftPill = Events:FindFirstChild("CraftPill")
+        if not CraftPill then warn("[AutoCraft] CraftPill missing") return end
+        if not selectedPill or not PillRecipes[selectedPill] then warn("[AutoCraft] Invalid pill selected") return end
+        if not selectedRarity then warn("[AutoCraft] Invalid rarity selected") return end
 
         local herbs = PillRecipes[selectedPill]
-        if not herbs then
-            warn("⚠ No recipe found for:", selectedPill)
-            return
-        end
+        local args = buildArgs(herbs, selectedRarity, perIngredient)
+        print("[AutoCraft] One-shot will run:", craftAmount, "times with args:", table.concat(args, ", "))
 
-        -- Build args with rarity
-        local args = {}
-        for _, herb in ipairs(herbs) do
-            local ingredient = "Herb_" .. herb .. "_" .. selectedRarity
-            table.insert(args, ingredient)
+        for i = 1, (craftAmount == 0 and 2500 or craftAmount) do
+            local ok, err = pcall(function()
+                CraftPill:FireServer(unpack(args))
+            end)
+            if not ok then
+                warn("[AutoCraft] One-shot FireServer failed:", err)
+                break
+            end
+            task.wait(delayTime)
         end
-        table.insert(args, 1) -- number of each ingredient
-
-        print("🚀 Crafting:", selectedPill, "x2500 with", unpack(args))
-
-        -- Fire 2500 times
-        for i = 1, 2500 do
-            CraftPill:FireServer(unpack(args))
-            task.wait(0.01)
-        end
+        print("[AutoCraft] One-shot complete")
     end,
 })
 
+-- final message
+print("[AutoCraft] Ready. Open Output (F9). Select a pill + rarity, set amount/delay, then toggle or press One-shot.")
