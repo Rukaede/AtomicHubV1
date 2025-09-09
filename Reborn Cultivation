@@ -40,9 +40,15 @@ local Window = Rayfield:CreateWindow({
 local Main = Window:CreateTab("Main", nil) -- Title, Image
 local Section = Main:CreateSection("Auto Farm")
 
+-- Close Button
 Main:CreateButton({
    Name = "❌ Close GUI",
    Callback = function()
-      game:GetService("CoreGui"):FindFirstChild("Rayfield"):Destroy()
+      local coreGui = game:GetService("CoreGui")
+      local rayfieldUI = coreGui:FindFirstChild("Rayfield")
+
+      if rayfieldUI then
+         rayfieldUI:Destroy() -- permanently removes GUI
+      end
    end,
 })
