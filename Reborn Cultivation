@@ -46,10 +46,12 @@ local DestroyButton = Misc:CreateButton({
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CraftPill = ReplicatedStorage:WaitForChild("Events"):WaitForChild("CraftPill")
 
--- Pill Recipes (exact herb names with spaces!)
+-- ✅ Pill Recipes (with 4 herbs each)
 local PillRecipes = {
-    ["Awakening Qi Pill"] = {"Moonlight Flower", "Moonlight Flower", "Moonlight Flower", "Moonlight Flower"},
-    ["Perfect Qi Pill"]   = {"Ginseng", "Ginseng", "Spirit Grass", "Spirit Grass"}
+    ["Awakening Qi Pill"] = {"Ginseng", "Ginseng", "Spirit Grass", "Spirit Grass"},
+    ["Perfect Qi Pill"]   = {"Ginseng", "Spirit Grass", "Spirit Grass", "Lotus"},
+    ["Moonlight Qi Pill"] = {"Moonlight Flower", "Moonlight Flower", "Moonlight Flower", "Moonlight Flower"},
+    ["Nine Rotations Pill"] = {"Blood Flower", "Blood Flower", "Blood Flower", "Blood Flower"} -- example
 }
 
 local selectedPill = nil
@@ -58,7 +60,7 @@ local selectedRarity = nil
 -- Dropdown for Pill
 local Pill = Main:CreateDropdown({
     Name = "Choose Pill",
-    Options = {"Awakening Qi Pill", "Perfect Qi Pill"},
+    Options = {"Awakening Qi Pill", "Perfect Qi Pill", "Moonlight Qi Pill", "Nine Rotations Pill"},
     CurrentOption = "None",
     MultipleOptions = false,
     Flag = "PillDrop",
@@ -82,7 +84,7 @@ local Rarity = Main:CreateDropdown({
 
 -- Button to Auto Craft
 local AutoCraft = Main:CreateButton({
-    Name = "Start Auto Craft (2500x)",
+    Name = "Craft Pill (x2500)",
     Callback = function()
         if not selectedPill or not selectedRarity then
             warn("⚠ Please select both pill and rarity first!")
@@ -101,14 +103,15 @@ local AutoCraft = Main:CreateButton({
             local ingredient = "Herb_" .. herb .. "_" .. selectedRarity
             table.insert(args, ingredient)
         end
-        table.insert(args, 1) -- amount
+        table.insert(args, 1) -- number of each ingredient
 
         print("🚀 Crafting:", selectedPill, "x2500 with", unpack(args))
 
-        -- Loop fire 2500x
+        -- Fire 2500 times
         for i = 1, 2500 do
             CraftPill:FireServer(unpack(args))
             task.wait(0.01)
         end
     end,
 })
+
