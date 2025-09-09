@@ -40,40 +40,9 @@ local Window = Rayfield:CreateWindow({
 local Main = Window:CreateTab("Main", nil) -- Title, Image
 local Section = Main:CreateSection("Auto Farm")
 
--- add this where you create other buttons (you already have `Main` and `Rayfield` in scope)
-Main:CreateButton({
-    Name = "❌ Close GUI",
-    Callback = function()
-        local ok, err = pcall(function()
-            -- 1) Preferred: use Rayfield API to hide UI
-            if Rayfield and typeof(Rayfield) == "Instance" and Rayfield.SetVisibility then
-                Rayfield:SetVisibility(false)
-                return
-            end
-
-            -- 2) Fallback: destroy the Rayfield instance if it exposes :Destroy()
-            if Rayfield and typeof(Rayfield) == "Instance" and Rayfield.Destroy then
-                Rayfield:Destroy()
-                return
-            end
-
-            -- 3) Last fallback: try CoreGui (use WaitForChild / safe checks)
-            local CoreGui = game:GetService("CoreGui")
-            local gui = CoreGui:FindFirstChild("Rayfield") or CoreGui:FindFirstChild("Rayfield-Old")
-            if not gui then
-                -- Wait a little (timeout) in case of race
-                gui = CoreGui:WaitForChild("Rayfield", 2) -- returns nil after timeout
-            end
-            if gui and gui.Destroy then
-                gui:Destroy()
-            end
-        end)
-
-        if not ok then
-            -- Helpful debug message in Output without throwing more errors
-            warn("Close GUI callback failed: " .. tostring(err))
-            -- a final no-crash attempt to hide via API if it exists
-            pcall(function() if Rayfield and Rayfield.SetVisibility then Rayfield:SetVisibility(false) end end)
-        end
-    end,
+Tab:CreateButton({
+   Name = "Close GUI",
+   Callback = function()
+      Rayfield:Destroy()
+   end
 })
